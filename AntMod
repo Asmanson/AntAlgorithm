@@ -1,0 +1,96 @@
+import random
+import numpy as np
+
+
+num_ants = 13  # количество муравьев
+num_iterations = 1000  # количество итераций
+alpha = 1  # вес феромона
+beta = 0  # вес расстояния
+rho = 0.2  # коэффициент испарения феромона
+dopiter = 1001 # значение доп итерации
+Q = 1
+d = 0
+k = 1
+n = num_ants
+
+
+num_cities = 13  # количество вершин
+distances = [[0, 6.8, 7.6, 14.6, 9.6, 15.4, 12.7, 16.3, 17.5, 16, 19.4, 19, 39],
+                 [6.2, 0, 1.9, 6.6, 5.7, 6.9, 9.9, 8.6, 11.7, 13.4, 14.7, 15, 45],
+                 [7, 2.4, 0, 6.9, 4.5, 7.1, 8.4, 8.8, 12.1, 12.3, 13.5, 13.1, 47],
+                 [14.8, 6.8, 6.9, 0, 4.1, 3.4, 11.7, 5.7, 7.6, 14.3, 11.6, 12.6, 52],
+                 [9.6, 5.7, 4.5, 5.1, 0, 6, 6.2, 5.9, 6.6, 11.2, 11, 10.5, 47],
+                 [16.1, 6.9, 7.1, 3.4, 5.2, 0, 8.4, 1.8, 5.2, 12.3, 8.6, 10.8, 54],
+                 [10.9, 9.9, 8.4, 10, 6.5, 9.3, 0, 6.8, 8.4, 4.2, 10.3, 9.8, 43],
+                 [16.3, 8.6, 8.8, 5.6, 5.9, 1.7, 8.2, 0, 3.8, 11.7, 7.8, 9.8, 58],
+                 [17.5, 13.4, 12.1, 7.9, 7, 5.5, 7.9, 4.7, 0, 12, 4.4, 7.4, 60],
+                 [16.2, 13.6, 12.3, 15, 9.7, 12.4, 5.4, 12.3, 9, 0, 8.9, 6.4, 48],
+                 [19.4, 14.7, 13.5, 11.4, 12, 9.8, 9.9, 7.6, 4.7, 9.5, 0, 5.4, 57],
+                 [19, 15, 13.1, 12.7, 10.7, 9.8, 9.8, 8.8, 5.7, 5.8, 5.7, 0, 52],
+                    [39, 45, 47, 52, 47, 54, 43, 58, 60, 48, 57, 52, 0]]
+
+# инициализация матрицы феромонов
+pheromone = [[1 / (num_cities * num_cities) for j in range(num_cities)] for i in range(num_cities)]
+
+# запуск алгоритма
+best_distance = float('inf')
+best_route = []
+
+for it in range(num_iterations):
+    # подготовка к доп итерации
+    if it % dopiter == 0:
+        alpha = alpha + beta
+        beta = alpha - beta
+        alpha = alpha - beta
+        num_ants = random.randint(1, n)
+        k = n/num_ants
+    # инициализация муравьев
+    ants = [[random.randint(0, num_cities - 1)] for i in range(num_ants)]
+    for i in range(num_ants):
+        ants[i][0] = 0
+    for i in range(num_ants):
+        for j in range(num_cities - 1):
+            current_city = ants[i][-1]
+            # расчет вероятностей перехода в следующий город
+            probs = [0] * num_cities
+            G=0
+            for next_city in range(num_cities):
+                if next_city not in ants[i]:
+                    G+=((pheromone[current_city][next_city] ** alpha) *
+                                        ((1.0 / distances[current_city][next_city]) ** beta))
+            for next_city in range(num_cities):
+                if next_city not in ants[i]:
+                    probs[next_city] = ((pheromone[current_city][next_city] ** alpha) *
+                                        ((1.0 / distances[current_city][next_city]) ** beta))/G
+            # выбор следующего города
+            selected_city = np.random.choice(len(probs), p=probs)
+            ants[i].append(selected_city)
+
+    # расчет длины маршрута муравья
+    current_distance = 0
+    for j in range(num_cities - 1):
+        current_distance += distances[ants[i][j]][ants[i][j+1]]
+    current_distance += distances[ants[i][-1]][ants[i][0]]
+
+    # обновление лучшего маршрута
+    if current_distance < best_distance:
+        best_distance = current_distance
+        best_route = ants[i]
+        d = it + 1
+
+    # обновление матрицы феромонов
+    for j in range(num_cities - 1):
+        pheromone[ants[i][j]][ants[i][j+1]] = (1 - rho) * pheromone[ants[i][j]][ants[i][j+1]] + \
+                                               k * Q / current_distance
+    pheromone[ants[i][-1]][ants[i][0]] = (1 - rho) * pheromone[ants[i][-1]][ants[i][0]] + \
+                                         k * Q / current_distance
+    # возвращение к обычным итерациям
+    if it % dopiter == 0:
+        alpha = alpha + beta
+        beta = alpha - beta
+        alpha = alpha - beta
+        num_ants = n
+        k = 1
+print(f"Кратчайшее расстояние, км: {best_distance}")
+print(f"Маршрут движения: {best_route}")
+print(d)
